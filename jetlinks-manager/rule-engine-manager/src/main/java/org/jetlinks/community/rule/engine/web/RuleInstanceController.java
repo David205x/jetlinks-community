@@ -1,5 +1,6 @@
 package org.jetlinks.community.rule.engine.web;
 
+import com.alibaba.fastjson.JSONObject;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,6 +16,7 @@ import org.hswebframework.web.authorization.annotation.ResourceAction;
 import org.hswebframework.web.crud.service.ReactiveCrudService;
 import org.hswebframework.web.crud.web.reactive.ReactiveServiceCrudController;
 import org.hswebframework.web.exception.NotFoundException;
+import org.jetlinks.community.rule.engine.configuration.WebSocketWrap;
 import org.jetlinks.community.rule.engine.entity.RuleEngineExecuteEventInfo;
 import org.jetlinks.community.rule.engine.entity.RuleEngineExecuteLogInfo;
 import org.jetlinks.community.rule.engine.entity.RuleInstanceEntity;
@@ -132,6 +134,22 @@ public class RuleInstanceController implements ReactiveServiceCrudController<Rul
             .filter(task -> task.getId().equals(taskId))
             .switchIfEmpty(Mono.error(NotFoundException::new))
             .flatMap(task -> task.execute(data)).then());
+    }
+
+    @RequestMapping("/create")
+    public Mono<Void> create(@RequestBody Mono<RuleInstanceEntity> payload){
+        JSONObject msg = new JSONObject();
+        msg.put("flowId", "");
+        msg.put("option", "add");
+        msg.put("type", "json");    // 消息类型，比如单独的'你好'， json/text
+        WebSocketWrap.broadcastText(msg.toJSONString());
+
+        return payload
+            .doOnNext(dev ->{
+                dev.setModelVersion(1);
+            })
+            .as(instanceService::save)
+            .then();
     }
 
     @Override
